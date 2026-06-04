@@ -1,0 +1,33 @@
+export const PARTIDO_CORES: Record<string, string> = {
+  PT: '#c41e3a',
+  PL: '#003087',
+  UNIÃO: '#1a6b3c',
+  PP: '#0047ab',
+  MDB: '#f5a623',
+  REPUBLICANOS: '#2e8b57',
+  PSD: '#c8a000',
+  PDT: '#e30613',
+  PSDB: '#0072b2',
+  PSOL: '#7b2d8b',
+  PODE: '#003580',
+  AVANTE: '#e67e22',
+  SOLIDARIEDADE: '#009b77',
+  PSB: '#e74c3c',
+  PCdoB: '#c0392b',
+  CIDADANIA: '#16a085',
+  PRD: '#2980b9',
+  DC: '#8e44ad',
+  AGIR: '#27ae60',
+  PMN: '#d35400',
+  PMB: '#1abc9c',
+  PRTB: '#7f8c8d',
+  UP: '#c0392b',
+  REDE: '#27ae60',
+  PV: '#2ecc71',
+  NOVO: '#e67e22',
+}
+
+export const UFS = [
+  'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
+  'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO',
+]

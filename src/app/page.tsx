@@ -1,65 +1,142 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Search, Users, Building2, MapPin } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { DeputadoCard } from '@/components/DeputadoCard'
+import type { ApiResponse, DeputadoResumo } from '@/types/camara'
+import { UFS } from '@/lib/partido-cores'
+import { useDebounce } from '@/lib/use-debounce'
+
+const PARTIDOS = [
+  'PT','PL','UNIÃO','PP','MDB','REPUBLICANOS','PSD','PDT','PSDB','PSOL',
+  'PODE','AVANTE','SOLIDARIEDADE','PSB','PCdoB','CIDADANIA','PRD',
+]
+
+async function fetchDeputados(nome: string, partido: string, uf: string): Promise<ApiResponse<DeputadoResumo[]>> {
+  const params = new URLSearchParams()
+  if (nome) params.set('nome', nome)
+  if (partido && partido !== 'todos') params.set('siglaPartido', partido)
+  if (uf && uf !== 'todos') params.set('siglaUf', uf)
+  params.set('idLegislatura', '57')
+  const res = await fetch(`/api/deputados?${params}`)
+  if (!res.ok) throw new Error('Erro ao buscar deputados')
+  return res.json()
+}
+
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex items-center gap-3 bg-card border rounded-xl px-5 py-4">
+      <div className="text-primary">{icon}</div>
+      <div>
+        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+      </div>
     </div>
-  );
+  )
+}
+
+export default function HomePage() {
+  const [nome, setNome] = useState('')
+  const [partido, setPartido] = useState('')
+  const [uf, setUf] = useState('')
+
+  const debouncedNome = useDebounce(nome, 400)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['deputados', debouncedNome, partido, uf],
+    queryFn: () => fetchDeputados(debouncedNome, partido, uf),
+  })
+
+  const deputados = data?.dados ?? []
+  const totalPartidos = new Set(deputados.map((d) => d.siglaPartido)).size
+  const totalUfs = new Set(deputados.map((d) => d.siglaUf)).size
+
+  const handleClearFiltros = useCallback(() => {
+    setNome('')
+    setPartido('')
+    setUf('')
+  }, [])
+
+  const temFiltro = nome || (partido && partido !== 'todos') || (uf && uf !== 'todos')
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Deputados Federais</h1>
+        <p className="text-muted-foreground">
+          Acompanhe votos, projetos de lei, presença e gastos dos representantes federais.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard icon={<Users className="h-5 w-5" />} label="deputados encontrados" value={deputados.length} />
+        <StatCard icon={<Building2 className="h-5 w-5" />} label="partidos" value={totalPartidos} />
+        <StatCard icon={<MapPin className="h-5 w-5" />} label="estados representados" value={totalUfs} />
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome..."
+            className="pl-9"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+          />
+        </div>
+        <Select value={partido} onValueChange={(v) => setPartido(v ?? '')}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Partido" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os partidos</SelectItem>
+            {PARTIDOS.map((p) => (
+              <SelectItem key={p} value={p}>{p}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={uf} onValueChange={(v) => setUf(v ?? '')}>
+          <SelectTrigger className="w-full sm:w-36">
+            <SelectValue placeholder="Estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os estados</SelectItem>
+            {UFS.map((u) => (
+              <SelectItem key={u} value={u}>{u}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {temFiltro && (
+          <button
+            onClick={handleClearFiltros}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+          >
+            Limpar filtros
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+      ) : deputados.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          Nenhum deputado encontrado com esses filtros.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {deputados.map((d) => (
+            <DeputadoCard key={d.id} deputado={d} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
