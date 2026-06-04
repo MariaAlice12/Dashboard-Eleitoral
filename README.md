@@ -1,36 +1,130 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dashboard Eleitoral
 
-## Getting Started
+Aplicação web para acompanhar deputados federais brasileiros — votos, projetos de lei, presença em eventos e gastos com a cota parlamentar (CEAP). Dados obtidos em tempo real pela [API de Dados Abertos da Câmara dos Deputados](https://dadosabertos.camara.leg.br/swagger/api.html).
 
-First, run the development server:
+## Funcionalidades
+
+**Página inicial** — lista todos os deputados da 57ª legislatura com busca por nome, filtro por partido e por estado. Exibe contadores de deputados encontrados, partidos e estados representados.
+
+**Perfil do deputado** — página dedicada a cada deputado com:
+- Resumo: votações registradas, projetos apresentados, taxa de presença e total gasto no CEAP no ano
+- Informações do gabinete (prédio, sala, telefone)
+- Aba **Votos** — histórico de votações com distribuição em gráfico de pizza e lista filtrável
+- Aba **Projetos** — proposições apresentadas na legislatura
+- Aba **Presença** — eventos parlamentares com situação
+- Aba **Gastos** — despesas CEAP com gráfico de área mensal, breakdown por categoria e tabela de lançamentos recentes
+
+**Ranking** — comparativo entre deputados filtráveis por partido/UF, com pódio de presença, pódio de produtividade legislativa e lista completa.
+
+## Stack
+
+| Camada | Tecnologia |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| UI | React 19 + Tailwind CSS v4 + shadcn/ui |
+| Gráficos | Recharts |
+| Fetching / cache | TanStack Query v5 |
+| Ícones | Lucide React |
+| Tipagem | TypeScript 5 |
+
+## Pré-requisitos
+
+- Node.js 20+
+- npm (ou pnpm/yarn)
+
+## Como rodar
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+A aplicação sobe em `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build   # build de produção
+npm run start   # servidor de produção
+npm run lint    # linting
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Estrutura do projeto
 
-## Learn More
+```
+src/
+├── app/
+│   ├── page.tsx                          # Listagem de deputados (home)
+│   ├── layout.tsx                        # Layout raiz com providers
+│   ├── ranking/
+│   │   └── page.tsx                      # Página de ranking
+│   ├── deputado/[id]/
+│   │   ├── layout.tsx                    # Layout com header e tabs do deputado
+│   │   ├── page.tsx                      # Aba resumo (overview)
+│   │   ├── votos/page.tsx                # Aba de votações
+│   │   ├── projetos/page.tsx             # Aba de proposições
+│   │   ├── presenca/page.tsx             # Aba de eventos/presença
+│   │   └── gastos/page.tsx               # Aba de despesas CEAP
+│   └── api/
+│       ├── deputados/route.ts            # GET /api/deputados
+│       └── deputados/[id]/
+│           ├── route.ts                  # GET /api/deputados/:id
+│           ├── votacoes/route.ts         # GET /api/deputados/:id/votacoes
+│           ├── proposicoes/route.ts      # GET /api/deputados/:id/proposicoes
+│           ├── eventos/route.ts          # GET /api/deputados/:id/eventos
+│           └── despesas/route.ts         # GET /api/deputados/:id/despesas
+├── components/
+│   ├── DeputadoCard.tsx                  # Card da listagem principal
+│   ├── DeputadoHeader.tsx                # Foto, nome, partido e UF no topo do perfil
+│   ├── DeputadoTabs.tsx                  # Navegação por abas do perfil
+│   ├── Navbar.tsx                        # Barra de navegação global
+│   ├── providers.tsx                     # QueryClientProvider
+│   └── ui/                               # Componentes shadcn/ui
+├── lib/
+│   ├── camara-api.ts                     # Funções de acesso à API da Câmara
+│   ├── partido-cores.ts                  # Mapa de cores por partido e lista de UFs
+│   ├── format.ts                         # Formatadores de moeda, data e percentual
+│   ├── use-debounce.ts                   # Hook de debounce para busca
+│   └── utils.ts                          # Utilitário cn() do Tailwind
+└── types/
+    └── camara.ts                         # Tipos TypeScript dos recursos da API
+```
 
-To learn more about Next.js, take a look at the following resources:
+## API Routes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+As rotas de API atuam como proxy para a API pública da Câmara, adicionando cache HTTP e ocultando parâmetros internos do cliente.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Método | Rota | Cache | Descrição |
+|---|---|---|---|
+| GET | `/api/deputados` | 1 h / revalidate 24 h | Lista deputados com filtros opcionais |
+| GET | `/api/deputados/:id` | 1 h | Detalhes de um deputado |
+| GET | `/api/deputados/:id/votacoes` | 1 h | Histórico de votações |
+| GET | `/api/deputados/:id/proposicoes` | 1 h | Proposições apresentadas |
+| GET | `/api/deputados/:id/eventos` | 1 h | Eventos/presença |
+| GET | `/api/deputados/:id/despesas` | 24 h | Despesas CEAP |
 
-## Deploy on Vercel
+**Parâmetros aceitos em `GET /api/deputados`:**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `nome` | string | Filtra por nome do deputado |
+| `siglaPartido` | string | Filtra por sigla do partido (ex: `PT`, `PL`) |
+| `siglaUf` | string | Filtra por estado (ex: `SP`, `MG`) |
+| `idLegislatura` | string | Número da legislatura (padrão: `57`) |
+| `pagina` | string | Paginação |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Fonte de dados
+
+Todos os dados vêm da [API v2 de Dados Abertos da Câmara dos Deputados](https://dadosabertos.camara.leg.br/swagger/api.html) — uma API pública sem necessidade de autenticação.
+
+O módulo `src/lib/camara-api.ts` centraliza todos os acessos, usando `next: { revalidate }` para cache incremental no servidor (ISR). No cliente, o TanStack Query mantém os dados em cache por `staleTime: 5min` para evitar requisições redundantes durante a navegação.
+
+## Tipos principais
+
+| Tipo | Descrição |
+|---|---|
+| `DeputadoResumo` | Dados básicos retornados na listagem |
+| `DeputadoDetalhe` | Dados completos incluindo gabinete e dados pessoais |
+| `Votacao` | Registro de uma votação na Câmara |
+| `Proposicao` / `ProposicaoDetalhe` | Projeto de lei ou proposição legislativa |
+| `Evento` | Sessão, audiência ou reunião com situação e local |
+| `Despesa` | Lançamento de cota parlamentar (CEAP) com fornecedor e valor |
+| `ApiResponse<T>` | Envelope padrão da API: `{ dados: T, links: [...] }` |
