@@ -8,10 +8,12 @@ export async function GET(req: NextRequest) {
       nome: searchParams.get('nome') ?? undefined,
       siglaPartido: searchParams.get('siglaPartido') ?? undefined,
       siglaUf: searchParams.get('siglaUf') ?? undefined,
-      idLegislatura: searchParams.get('idLegislatura') ?? undefined,
+      itens: searchParams.get('itens') ?? undefined,
       pagina: searchParams.get('pagina') ?? undefined,
     })
-    return NextResponse.json(data)
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
+    })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

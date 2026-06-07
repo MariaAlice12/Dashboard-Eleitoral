@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { Search, Users, Building2, MapPin } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -16,12 +16,18 @@ const PARTIDOS = [
   'PODE','AVANTE','SOLIDARIEDADE','PSB','PCdoB','CIDADANIA','PRD',
 ]
 
-async function fetchDeputados(nome: string, partido: string, uf: string): Promise<ApiResponse<DeputadoResumo[]>> {
+async function fetchDeputados(
+  nome: string,
+  partido: string,
+  uf: string,
+  pagina: number,
+): Promise<ApiResponse<DeputadoResumo[]>> {
   const params = new URLSearchParams()
   if (nome) params.set('nome', nome)
   if (partido && partido !== 'todos') params.set('siglaPartido', partido)
   if (uf && uf !== 'todos') params.set('siglaUf', uf)
-  params.set('idLegislatura', '57')
+  params.set('itens', '100')
+  params.set('pagina', String(pagina))
   const res = await fetch(`/api/deputados?${params}`)
   if (!res.ok) throw new Error('Erro ao buscar deputados')
   return res.json()
@@ -46,12 +52,21 @@ export default function HomePage() {
 
   const debouncedNome = useDebounce(nome, 400)
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['deputados', debouncedNome, partido, uf],
-    queryFn: () => fetchDeputados(debouncedNome, partido, uf),
-  })
+  const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
+    useInfiniteQuery({
+      queryKey: ['deputados', debouncedNome, partido, uf],
+      queryFn: ({ pageParam }) => fetchDeputados(debouncedNome, partido, uf, pageParam),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage, _all, lastPageParam) =>
+        lastPage.links.some((l) => l.rel === 'next') ? lastPageParam + 1 : undefined,
+      staleTime: 5 * 60 * 1000,
+    })
 
-  const deputados = data?.dados ?? []
+  const deputados = Array.from(
+    new Map(
+      (data?.pages ?? []).flatMap((p) => p.dados).map((d) => [d.id, d]),
+    ).values(),
+  )
   const totalPartidos = new Set(deputados.map((d) => d.siglaPartido)).size
   const totalUfs = new Set(deputados.map((d) => d.siglaUf)).size
 
@@ -120,6 +135,12 @@ export default function HomePage() {
         )}
       </div>
 
+      {isFetching && !isFetchingNextPage && !isLoading && (
+        <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+          <div className="h-full bg-primary animate-pulse w-1/2 rounded-full" />
+        </div>
+      )}
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 20 }).map((_, i) => (
@@ -131,11 +152,32 @@ export default function HomePage() {
           Nenhum deputado encontrado com esses filtros.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {deputados.map((d) => (
-            <DeputadoCard key={d.id} deputado={d} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {deputados.map((d) => (
+              <DeputadoCard key={d.id} deputado={d} />
+            ))}
+          </div>
+
+          {isFetchingNextPage && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-xl" />
+              ))}
+            </div>
+          )}
+
+          {hasNextPage && !isFetchingNextPage && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => fetchNextPage()}
+                className="px-6 py-2 rounded-lg border border-input bg-transparent text-sm hover:bg-muted transition-colors"
+              >
+                Carregar mais
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AlertCircle } from 'lucide-react'
 import type { ApiResponse, Votacao } from '@/types/camara'
 import { formatDate } from '@/lib/format'
 
@@ -29,9 +30,10 @@ export default function VotosPage() {
   const { id } = useParams<{ id: string }>()
   const [filtroDesc, setFiltroDesc] = useState('')
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['votacoes', id],
     queryFn: () => fetchVotacoes(id),
+    retry: false,
   })
 
   const votacoes = data?.dados ?? []
@@ -51,6 +53,27 @@ export default function VotosPage() {
       return acc
     }, {}),
   ).map(([name, value]) => ({ name, value }))
+
+  if (!isLoading && (isError || votacoes.length === 0)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+        <AlertCircle className="h-8 w-8" />
+        <p className="text-base font-medium">Dados de votações indisponíveis</p>
+        <p className="text-sm text-center max-w-sm">
+          O endpoint de votações por deputado foi removido da API da Câmara (v2).
+          Os registros individuais de voto não estão acessíveis via API pública no momento.
+        </p>
+        <a
+          href={`https://www.camara.leg.br/deputados/${id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-primary hover:underline"
+        >
+          Ver perfil oficial na Câmara →
+        </a>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
