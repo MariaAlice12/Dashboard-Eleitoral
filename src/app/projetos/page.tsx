@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, ArrowLeft } from 'lucide-react'
+import { Search } from 'lucide-react'
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { PARTIDO_CORES, UFS } from '@/lib/partido-cores'
 import { AREAS, classificarProposicao, getArea } from '@/lib/classificar-proposicao'
@@ -101,10 +101,6 @@ export default function ProjetosPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       <div className="space-y-2">
-        <Link href="/ranking" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
-          <ArrowLeft className="h-4 w-4" />
-          Voltar ao ranking
-        </Link>
         <h1 className="text-3xl font-bold">Projetos Legislativos</h1>
         <p className="text-muted-foreground">Explore os projetos apresentados pelos deputados federais.</p>
       </div>

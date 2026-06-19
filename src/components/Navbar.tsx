@@ -16,7 +16,7 @@ export function Navbar() {
           <Link href="/ranking" className="hover:text-foreground transition-colors">
             Ranking
           </Link>
-          <Link href="/ranking/projetos" className="flex items-center gap-1 hover:text-foreground transition-colors">
+          <Link href="/projetos" className="flex items-center gap-1 hover:text-foreground transition-colors">
             <FileText className="h-4 w-4" />
             Projetos
           </Link>
