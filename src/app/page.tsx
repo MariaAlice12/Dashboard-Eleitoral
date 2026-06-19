@@ -1,15 +1,29 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useState, useCallback, useMemo } from 'react'
+import { useInfiniteQuery, useQueries } from '@tanstack/react-query'
 import { Search, Users, Building2, MapPin } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeputadoCard } from '@/components/DeputadoCard'
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { UFS } from '@/lib/partido-cores'
 import { useDebounce } from '@/lib/use-debounce'
+import { classificarProposicao, getArea } from '@/lib/classificar-proposicao'
+
+const AMOSTRA_AREAS = 40
+
+type ProposicaoResumo = { id: number; ementa: string }
+
+async function fetchProposicoes(id: number): Promise<ProposicaoResumo[]> {
+  const res = await fetch(`/api/deputados/${id}/proposicoes?itens=100`)
+  if (!res.ok) return []
+  const d: ApiResponse<ProposicaoResumo[]> = await res.json()
+  return d.dados ?? []
+}
 
 const PARTIDOS = [
   'PT','PL','UNIÃO','PP','MDB','REPUBLICANOS','PSD','PDT','PSDB','PSOL',
@@ -70,6 +84,36 @@ export default function HomePage() {
   const totalPartidos = new Set(deputados.map((d) => d.siglaPartido)).size
   const totalUfs = new Set(deputados.map((d) => d.siglaUf)).size
 
+  const deputadosAmostra = deputados.slice(0, AMOSTRA_AREAS)
+  const propostasAreaQueries = useQueries({
+    queries: deputadosAmostra.map((dep) => ({
+      queryKey: ['proposicoes-home-area', dep.id],
+      queryFn: () => fetchProposicoes(dep.id),
+      staleTime: 10 * 60 * 1000,
+    })),
+  })
+  const isLoadingAreas = propostasAreaQueries.some((q) => q.isLoading)
+
+  const areaChartData = useMemo(() => {
+    if (deputadosAmostra.length === 0 || isLoadingAreas) return []
+    const counts: Record<string, number> = {}
+    let total = 0
+    propostasAreaQueries.forEach((q) => {
+      q.data?.forEach((p) => {
+        const areaId = classificarProposicao(p.ementa)
+        counts[areaId] = (counts[areaId] ?? 0) + 1
+        total += 1
+      })
+    })
+    if (total === 0) return []
+    return Object.entries(counts)
+      .map(([areaId, count]) => {
+        const area = getArea(areaId)
+        return { name: area.label, value: count, pct: (count / total) * 100, color: area.color }
+      })
+      .sort((a, b) => b.value - a.value)
+  }, [isLoadingAreas, propostasAreaQueries, deputadosAmostra.length])
+
   const handleClearFiltros = useCallback(() => {
     setNome('')
     setPartido('')
@@ -92,6 +136,51 @@ export default function HomePage() {
         <StatCard icon={<Building2 className="h-5 w-5" />} label="partidos" value={totalPartidos} />
         <StatCard icon={<MapPin className="h-5 w-5" />} label="estados representados" value={totalUfs} />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Representatividade dos projetos por área</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Classificação por palavras-chave da ementa, com base em uma amostra de até{' '}
+            {AMOSTRA_AREAS} deputados.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {isLoadingAreas ? (
+            <Skeleton className="h-72" />
+          ) : areaChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Sem dados suficientes para calcular a distribuição.
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={320}>
+              <PieChart>
+                <Pie
+                  data={areaChartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={110}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  label={(props: any) => `${props.name} (${props.pct.toFixed(1)}%)`}
+                >
+                  {areaChartData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={(value: any, _name: any, item: any) =>
+                    [`${value} (${item.payload.pct.toFixed(1)}%)`, item.payload.name]
+                  }
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <div className="relative flex-1 w-full">
