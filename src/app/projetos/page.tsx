@@ -12,6 +12,7 @@ import { Search } from 'lucide-react'
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { PARTIDO_CORES, UFS } from '@/lib/partido-cores'
 import { AREAS, classificarProposicao, getArea } from '@/lib/classificar-proposicao'
+import { ProjetoDetalheModal } from '@/components/ProjetoDetalheModal'
 
 const PARTIDOS = [
   'PT','PL','UNIÃO','PP','MDB','REPUBLICANOS','PSD','PDT','PSDB','PSOL',
@@ -55,6 +56,7 @@ export default function ProjetosPage() {
   const [ano, setAno] = useState('')
   const [area, setArea] = useState('')
   const [nomeDep, setNomeDep] = useState('')
+  const [projetoAberto, setProjetoAberto] = useState<number | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['projetos-deps', partido, uf],
@@ -194,7 +196,11 @@ export default function ProjetosPage() {
                 key={`${p.dep.id}-${p.id}`}
                 className="flex items-start gap-3 p-3 rounded-xl border bg-card hover:bg-muted/40 transition-colors"
               >
-                <div className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setProjetoAberto(p.id)}
+                  className="flex-1 min-w-0 text-left cursor-pointer"
+                >
                   <div className="flex flex-wrap items-center gap-1.5 mb-1">
                     <Badge variant="outline" className="text-xs shrink-0">
                       {p.siglaTipo} {p.numero}/{p.ano}
@@ -206,8 +212,8 @@ export default function ProjetosPage() {
                       {areaData.label}
                     </span>
                   </div>
-                  <p className="text-sm leading-snug line-clamp-2">{p.ementa}</p>
-                </div>
+                  <p className="text-sm leading-snug line-clamp-2 hover:underline">{p.ementa}</p>
+                </button>
                 <Link
                   href={`/deputado/${p.dep.id}`}
                   className="flex items-center gap-2 shrink-0 hover:opacity-80 transition-opacity"
@@ -232,6 +238,11 @@ export default function ProjetosPage() {
           )}
         </div>
       )}
+
+      <ProjetoDetalheModal
+        proposicaoId={projetoAberto}
+        onOpenChange={(open) => !open && setProjetoAberto(null)}
+      />
     </div>
   )
 }

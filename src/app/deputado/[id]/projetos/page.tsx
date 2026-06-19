@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { FileCheck2, FileText } from 'lucide-react'
 import type { ApiResponse, Proposicao } from '@/types/camara'
 import { AREAS, classificarProposicao, getArea } from '@/lib/classificar-proposicao'
+import { ProjetoDetalheModal } from '@/components/ProjetoDetalheModal'
 
 const TIPOS = ['PL', 'PEC', 'MPV', 'PDC', 'PRC', 'REQ', 'INC']
 const ANOS = Array.from(
@@ -82,6 +83,7 @@ export default function ProjetosPage() {
   const [ano, setAno] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
   const [filtroArea, setFiltroArea] = useState('')
+  const [projetoAberto, setProjetoAberto] = useState<number | null>(null)
 
   const { data: proposicoes = [], isLoading } = useQuery({
     queryKey: ['proposicoes', id, tipo, ano],
@@ -271,7 +273,11 @@ export default function ProjetosPage() {
             const area = getArea(p.areaId)
 
             return (
-              <Card key={p.id} className={isLei ? 'border-green-300 bg-green-50/50' : ''}>
+              <Card
+                key={p.id}
+                className={`cursor-pointer transition-colors hover:bg-muted/40 ${isLei ? 'border-green-300 bg-green-50/50' : ''}`}
+                onClick={() => setProjetoAberto(p.id)}
+              >
                 <CardContent className="p-4">
                   <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     <Badge variant="outline" className="text-xs">
@@ -289,13 +295,18 @@ export default function ProjetosPage() {
                       {area.label}
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed line-clamp-3">{p.ementa}</p>
+                  <p className="text-sm leading-relaxed line-clamp-3 hover:underline">{p.ementa}</p>
                 </CardContent>
               </Card>
             )
           })
         )}
       </div>
+
+      <ProjetoDetalheModal
+        proposicaoId={projetoAberto}
+        onOpenChange={(open) => !open && setProjetoAberto(null)}
+      />
     </div>
   )
 }
