@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeputadoCard } from '@/components/DeputadoCard'
-import { BarChart, Bar, Cell, Tooltip, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, Cell, Tooltip, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LabelList } from 'recharts'
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { UFS } from '@/lib/partido-cores'
 import { useDebounce } from '@/lib/use-debounce'
@@ -168,6 +168,7 @@ export default function HomePage() {
                   {areaChartData.map((entry) => (
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
+                  <LabelList dataKey="value" position="top" fontSize={12} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
