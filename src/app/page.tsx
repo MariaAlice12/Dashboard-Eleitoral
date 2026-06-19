@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeputadoCard } from '@/components/DeputadoCard'
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, Cell, Tooltip, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { UFS } from '@/lib/partido-cores'
 import { useDebounce } from '@/lib/use-debounce'
@@ -154,29 +154,22 @@ export default function HomePage() {
             </p>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={areaChartData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={110}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  label={(props: any) => `${props.name} (${props.pct.toFixed(1)}%)`}
-                >
-                  {areaChartData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
+              <BarChart data={areaChartData} margin={{ left: 8, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} />
                 <Tooltip
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(value: any, _name: any, item: any) =>
                     [`${value} (${item.payload.pct.toFixed(1)}%)`, item.payload.name]
                   }
                 />
-                <Legend />
-              </PieChart>
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {areaChartData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           )}
         </CardContent>
