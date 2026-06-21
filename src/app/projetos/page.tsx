@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Search } from 'lucide-react'
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
-import { PARTIDO_CORES, UFS } from '@/lib/partido-cores'
+import { UFS } from '@/lib/partido-cores'
 import { AREAS, getArea } from '@/lib/classificar-proposicao'
 import { ProjetoDetalheModal } from '@/components/ProjetoDetalheModal'
 

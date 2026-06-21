@@ -2,11 +2,8 @@
 
 import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle } from 'lucide-react'
 import type { ApiResponse, Votacao } from '@/types/camara'
@@ -28,7 +25,6 @@ async function fetchVotacoes(id: string): Promise<ApiResponse<Votacao[]>> {
 
 export default function VotosPage() {
   const { id } = useParams<{ id: string }>()
-  const [filtroDesc, setFiltroDesc] = useState('')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['votacoes', id],
@@ -37,14 +33,6 @@ export default function VotosPage() {
   })
 
   const votacoes = data?.dados ?? []
-
-  const filtradas = filtroDesc && filtroDesc !== 'todos'
-    ? votacoes.filter((v) => {
-        const desc = v.descricao?.toLowerCase() ?? ''
-        const obj = v.proposicaoObjeto?.toLowerCase() ?? ''
-        return desc.includes(filtroDesc.toLowerCase()) || obj.includes(filtroDesc.toLowerCase())
-      })
-    : votacoes
 
   const contagem = Object.entries(
     votacoes.reduce<Record<string, number>>((acc, v) => {
@@ -134,7 +122,7 @@ export default function VotosPage() {
         <CardContent className="space-y-2 p-0">
           {isLoading
             ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-14 mx-4 mb-2 rounded-lg" />)
-            : filtradas.map((v) => {
+            : votacoes.map((v) => {
                 const tipoVoto = (v as unknown as { tipoVoto?: string }).tipoVoto ?? '-'
                 const cfg = VOTO_CONFIG[tipoVoto]
                 return (
