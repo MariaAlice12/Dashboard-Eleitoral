@@ -4,7 +4,7 @@ import { classificarProposicoesComIA } from '@/lib/classificar-area-ia'
 import { prisma } from '@/lib/prisma'
 import type { DeputadoResumo, Proposicao } from '@/types/camara'
 
-export const maxDuration = 800
+export const maxDuration = 300
 
 async function listarTodosDeputados(): Promise<DeputadoResumo[]> {
   const todos: DeputadoResumo[] = []
