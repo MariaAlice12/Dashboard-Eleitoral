@@ -43,6 +43,26 @@ export async function listarDeputados(params?: {
   )
 }
 
+export async function contarDeputados(params?: {
+  nome?: string
+  siglaPartido?: string
+  siglaUf?: string
+}): Promise<number> {
+  const semFiltro = !params?.nome && !params?.siglaPartido && !params?.siglaUf
+  const key = `camara:deputados:total:${params?.nome ?? ''}:${params?.siglaPartido ?? ''}:${params?.siglaUf ?? ''}`
+  return withCache(key, semFiltro ? 86400 : 300, async () => {
+    let total = 0
+    let pagina = 1
+    while (true) {
+      const res = await listarDeputados({ ...params, itens: '100', pagina: String(pagina) })
+      total += res.dados.length
+      if (!res.links.some((l) => l.rel === 'next')) break
+      pagina += 1
+    }
+    return total
+  })
+}
+
 export async function buscarDeputado(id: number): Promise<DeputadoDetalhe> {
   const key = `camara:deputado:${id}`
   const res = await withCache(key, 3600, () =>

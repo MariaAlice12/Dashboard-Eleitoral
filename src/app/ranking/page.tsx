@@ -37,6 +37,17 @@ type ProposicaoResumo = {
   areaId?: string
 }
 
+type EventoResumo = { situacao?: string }
+
+async function fetchPresenca(id: number): Promise<{ total: number; presentes: number }> {
+  const res = await fetch(`/api/deputados/${id}/eventos`)
+  if (!res.ok) return { total: 0, presentes: 0 }
+  const d: ApiResponse<EventoResumo[]> = await res.json()
+  const eventos = d.dados ?? []
+  const presentes = eventos.filter((e) => e.situacao && !e.situacao.toLowerCase().includes('cancelad')).length
+  return { total: eventos.length, presentes }
+}
+
 async function fetchDeputados(partido: string, uf: string): Promise<ApiResponse<DeputadoResumo[]>> {
   const params = new URLSearchParams({ idLegislatura: '57', itens: '100' })
   if (partido && partido !== 'todos') params.set('siglaPartido', partido)
@@ -89,8 +100,35 @@ export default function RankingPage() {
   })
 
   const deputados = (data?.dados ?? []).slice(0, 50)
-  const podiumPresenca = deputados.slice(0, 3)
   const podiumProjetos = deputados.slice(0, 3)
+
+  // ── Aba "Presença" ──────────────────────────────────────────────────────────
+  const presencaDeputados = tab === 'presenca' ? deputados : []
+
+  const presencaQueries = useQueries({
+    queries: presencaDeputados.map((dep) => ({
+      queryKey: ['presenca-ranking', dep.id],
+      queryFn: () => fetchPresenca(dep.id),
+      staleTime: 10 * 60 * 1000,
+    })),
+  })
+
+  const isLoadingPresenca = presencaQueries.some((q) => q.isLoading)
+  const loadedCountPresenca = presencaQueries.filter((q) => !q.isLoading).length
+
+  const presencaRanking = useMemo(() => {
+    if (presencaDeputados.length === 0 || isLoadingPresenca) return []
+    return presencaDeputados
+      .map((dep, i) => {
+        const r = presencaQueries[i]?.data
+        if (!r || r.total === 0) return null
+        return { dep, pct: Math.round((r.presentes / r.total) * 100) }
+      })
+      .filter((x): x is { dep: DeputadoResumo; pct: number } => x !== null)
+      .sort((a, b) => b.pct - a.pct)
+  }, [isLoadingPresenca, presencaDeputados.length, loadedCountPresenca]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const podiumPresenca = presencaRanking.slice(0, 3)
 
   // ── Aba "Por Área" ──────────────────────────────────────────────────────────
   const areaDeputados = tab === 'areas' ? deputados : []
@@ -173,20 +211,27 @@ export default function RankingPage() {
         <TabsContent value="presenca" className="space-y-6 mt-6">
           <div>
             <h2 className="text-lg font-semibold mb-4">Maiores presenças</h2>
-            {isLoading ? (
-              <div className="grid grid-cols-3 gap-4">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)}
+            {isLoading || isLoadingPresenca ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-4">
+                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)}
+                </div>
+                {!isLoading && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Calculando presença… {loadedCountPresenca}/{presencaDeputados.length} deputados
+                  </p>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-4">
-                {podiumPresenca.map((dep, i) => (
-                  <PodiumCard key={dep.id} dep={dep} pos={i} value="—" sub="presença" />
+                {podiumPresenca.map(({ dep, pct }, i) => (
+                  <PodiumCard key={dep.id} dep={dep} pos={i} value={`${pct}%`} sub="presença" />
                 ))}
               </div>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Nota: os dados de presença requerem chamadas individuais por deputado. Use a página de cada deputado para ver o percentual exato.
+            Presença = eventos não cancelados / total de eventos da agenda do deputado desde 01/02/2023, entre os {deputados.length} deputados filtrados.
           </p>
         </TabsContent>
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listarDeputados } from '@/lib/camara-api'
+import { contarDeputados, listarDeputados } from '@/lib/camara-api'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
@@ -17,11 +17,14 @@ export async function GET(req: NextRequest) {
       ...(siglaUf && { siglaUf }),
     }
 
-    const total = await prisma.deputado.count({ where })
+    // total real do universo de deputados (não depende do progresso do sync no banco)
+    const total = await contarDeputados({ nome, siglaPartido, siglaUf })
 
-    if (total === 0) {
+    const dbCount = await prisma.deputado.count({ where })
+
+    if (dbCount === 0) {
       const data = await listarDeputados({ nome, siglaPartido, siglaUf, itens: String(itens), pagina: String(pagina) })
-      return NextResponse.json({ ...data, total: data.dados.length }, {
+      return NextResponse.json({ ...data, total }, {
         headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
       })
     }
@@ -43,7 +46,9 @@ export async function GET(req: NextRequest) {
       email: d.email ?? '',
     }))
 
-    const temProxima = pagina * itens < total
+    // a navegação por página segue o que já está sincronizado no banco;
+    // "total" acima reflete o universo real, mesmo com o sync em andamento
+    const temProxima = pagina * itens < dbCount
     const links = temProxima ? [{ rel: 'next', href: '' }] : []
 
     return NextResponse.json({ dados, links, total }, {
