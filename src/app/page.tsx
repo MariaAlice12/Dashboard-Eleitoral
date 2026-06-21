@@ -22,6 +22,14 @@ async function fetchAreas(): Promise<AreasResponse> {
   return res.json()
 }
 
+type DeputadosStats = { totalDeputados: number; totalPartidos: number; totalUfs: number }
+
+async function fetchDeputadosStats(): Promise<DeputadosStats> {
+  const res = await fetch('/api/deputados/stats')
+  if (!res.ok) return { totalDeputados: 0, totalPartidos: 0, totalUfs: 0 }
+  return res.json()
+}
+
 const PARTIDOS = [
   'PT','PL','UNIÃO','PP','MDB','REPUBLICANOS','PSD','PDT','PSDB','PSOL',
   'PODE','AVANTE','SOLIDARIEDADE','PSB','PCdoB','CIDADANIA','PRD',
@@ -81,8 +89,14 @@ export default function HomePage() {
     ).values(),
   )
   const totalDeputados = data?.pages.at(-1)?.total ?? deputados.length
-  const totalPartidos = new Set(deputados.map((d) => d.siglaPartido)).size
-  const totalUfs = new Set(deputados.map((d) => d.siglaUf)).size
+
+  const { data: stats } = useQuery({
+    queryKey: ['deputados-stats'],
+    queryFn: fetchDeputadosStats,
+    staleTime: 60 * 60 * 1000,
+  })
+  const totalPartidos = stats?.totalPartidos ?? 0
+  const totalUfs = stats?.totalUfs ?? 0
 
   const { data: areasData, isLoading: isLoadingAreas } = useQuery({
     queryKey: ['proposicoes-areas'],
