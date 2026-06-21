@@ -4,7 +4,12 @@ import { classificarProposicoesComIA } from '@/lib/classificar-area-ia'
 import { prisma } from '@/lib/prisma'
 import type { DeputadoResumo, Proposicao } from '@/types/camara'
 
-export const maxDuration = 300
+export const maxDuration = 60
+
+// Cada execução processa só um lote de deputados para caber no limite de
+// duração da função serverless (60s no plano Hobby da Vercel). O progresso
+// fica salvo em SyncState e o cron diário retoma de onde parou.
+const TAMANHO_LOTE = 20
 
 async function listarTodosDeputados(): Promise<DeputadoResumo[]> {
   const todos: DeputadoResumo[] = []
@@ -30,74 +35,119 @@ async function listarTodasProposicoes(idDeputado: number): Promise<Proposicao[]>
   return todas
 }
 
+async function processarDeputado(dep: DeputadoResumo): Promise<number> {
+  await prisma.deputado.upsert({
+    where: { id: dep.id },
+    create: {
+      id: dep.id,
+      nome: dep.nome,
+      siglaPartido: dep.siglaPartido,
+      siglaUf: dep.siglaUf,
+      urlFoto: dep.urlFoto,
+      email: dep.email || null,
+    },
+    update: {
+      nome: dep.nome,
+      siglaPartido: dep.siglaPartido,
+      siglaUf: dep.siglaUf,
+      urlFoto: dep.urlFoto,
+      email: dep.email || null,
+    },
+  })
+
+  const proposicoes = await listarTodasProposicoes(dep.id)
+  if (proposicoes.length === 0) return 0
+
+  const areas = await classificarProposicoesComIA(proposicoes)
+
+  for (const p of proposicoes) {
+    const areaId = areas.get(p.id) ?? 'outros'
+    await prisma.proposicao.upsert({
+      where: { id: p.id },
+      create: {
+        id: p.id,
+        idDeputadoAutor: dep.id,
+        siglaTipo: p.siglaTipo,
+        numero: p.numero,
+        ano: p.ano,
+        ementa: p.ementa,
+        areaId,
+      },
+      update: {
+        siglaTipo: p.siglaTipo,
+        numero: p.numero,
+        ano: p.ano,
+        ementa: p.ementa,
+        areaId,
+      },
+    })
+  }
+
+  return proposicoes.length
+}
+
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let deputadosProcessados = 0
-  let proposicoesProcessadas = 0
+  const estado = await prisma.syncState.upsert({
+    where: { id: 1 },
+    create: { id: 1 },
+    update: {},
+  })
+
+  const todos = (await listarTodosDeputados()).sort((a, b) => a.id - b.id)
+  const restantes = todos.filter(
+    (d) => estado.cursorDeputadoId === null || d.id > estado.cursorDeputadoId,
+  )
+
+  // Lote vazio com cursor existente = a passada anterior terminou tudo;
+  // reinicia do começo nesta mesma execução.
+  const pendentes = restantes.length > 0 ? restantes : todos
+  const inicioNovaPassada = restantes.length === 0
+  const lote = pendentes.slice(0, TAMANHO_LOTE)
+
+  let deputadosProcessados = inicioNovaPassada ? 0 : estado.deputadosProcessados
+  let proposicoesProcessadas = inicioNovaPassada ? 0 : estado.proposicoesProcessadas
 
   try {
-    const deputados = await listarTodosDeputados()
-
-    for (const dep of deputados) {
-      await prisma.deputado.upsert({
-        where: { id: dep.id },
-        create: {
-          id: dep.id,
-          nome: dep.nome,
-          siglaPartido: dep.siglaPartido,
-          siglaUf: dep.siglaUf,
-          urlFoto: dep.urlFoto,
-          email: dep.email || null,
-        },
-        update: {
-          nome: dep.nome,
-          siglaPartido: dep.siglaPartido,
-          siglaUf: dep.siglaUf,
-          urlFoto: dep.urlFoto,
-          email: dep.email || null,
-        },
-      })
+    for (const dep of lote) {
+      proposicoesProcessadas += await processarDeputado(dep)
       deputadosProcessados += 1
-
-      const proposicoes = await listarTodasProposicoes(dep.id)
-      if (proposicoes.length === 0) continue
-
-      const areas = await classificarProposicoesComIA(proposicoes)
-
-      for (const p of proposicoes) {
-        const areaId = areas.get(p.id) ?? 'outros'
-        await prisma.proposicao.upsert({
-          where: { id: p.id },
-          create: {
-            id: p.id,
-            idDeputadoAutor: dep.id,
-            siglaTipo: p.siglaTipo,
-            numero: p.numero,
-            ano: p.ano,
-            ementa: p.ementa,
-            areaId,
-          },
-          update: {
-            siglaTipo: p.siglaTipo,
-            numero: p.numero,
-            ano: p.ano,
-            ementa: p.ementa,
-            areaId,
-          },
-        })
-        proposicoesProcessadas += 1
-      }
     }
 
-    await prisma.ingestaoLog.create({
-      data: { status: 'sucesso', deputadosProcessados, proposicoesProcessadas },
-    })
+    const cursorAtual = lote.length > 0 ? lote[lote.length - 1].id : null
+    const passaCompleta = todos.every(
+      (d) => cursorAtual !== null && d.id <= cursorAtual,
+    )
 
-    return NextResponse.json({ deputadosProcessados, proposicoesProcessadas })
+    if (passaCompleta) {
+      await prisma.syncState.update({
+        where: { id: 1 },
+        data: { cursorDeputadoId: null, deputadosProcessados: 0, proposicoesProcessadas: 0 },
+      })
+      await prisma.ingestaoLog.create({
+        data: { status: 'sucesso', deputadosProcessados, proposicoesProcessadas },
+      })
+    } else {
+      await prisma.syncState.update({
+        where: { id: 1 },
+        data: {
+          cursorDeputadoId: cursorAtual,
+          deputadosProcessados,
+          proposicoesProcessadas,
+        },
+      })
+    }
+
+    return NextResponse.json({
+      loteProcessado: lote.length,
+      deputadosProcessados,
+      proposicoesProcessadas,
+      passaCompleta,
+    })
   } catch (err) {
     await prisma.ingestaoLog.create({
       data: {

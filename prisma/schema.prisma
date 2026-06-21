@@ -48,3 +48,13 @@ model IngestaoLog {
   proposicoesProcessadas  Int       @default(0)
   erro                    String?
 }
+
+// Linha única (id fixo = 1) que guarda o progresso da sincronização em lotes,
+// já que cada execução do cron processa só um trecho dos deputados para
+// caber no limite de duração da função serverless.
+model SyncState {
+  id                      Int       @id @default(1)
+  cursorDeputadoId        Int?
+  deputadosProcessados    Int       @default(0)
+  proposicoesProcessadas  Int       @default(0)
+}
