@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { FileCheck2, FileText } from 'lucide-react'
 import type { ApiResponse, Proposicao } from '@/types/camara'
-import { AREAS, classificarProposicao, getArea } from '@/lib/classificar-proposicao'
+import { AREAS, getArea } from '@/lib/classificar-proposicao'
 import { ProjetoDetalheModal } from '@/components/ProjetoDetalheModal'
 
 const TIPOS = ['PL', 'PEC', 'MPV', 'PDC', 'PRC', 'REQ', 'INC']
@@ -92,7 +92,7 @@ export default function ProjetosPage() {
   })
 
   const proposicoesComArea = useMemo(
-    () => proposicoes.map((p) => ({ ...p, areaId: classificarProposicao(p.ementa) })),
+    () => proposicoes.map((p) => ({ ...p, areaId: p.areaId ?? 'outros' })),
     [proposicoes],
   )
 

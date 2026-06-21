@@ -16,7 +16,7 @@ import {
 } from 'recharts'
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { PARTIDO_CORES, UFS } from '@/lib/partido-cores'
-import { classificarProposicao, getArea } from '@/lib/classificar-proposicao'
+import { getArea } from '@/lib/classificar-proposicao'
 
 const PARTIDOS = [
   'PT','PL','UNIÃO','PP','MDB','REPUBLICANOS','PSD','PDT','PSDB','PSOL',
@@ -34,6 +34,7 @@ type ProposicaoResumo = {
   siglaTipo: string
   numero: number
   ano: number
+  areaId?: string
 }
 
 async function fetchDeputados(partido: string, uf: string): Promise<ApiResponse<DeputadoResumo[]>> {
@@ -112,7 +113,7 @@ export default function RankingPage() {
       const dep = areaDeputados[i]
       if (!dep || !q.data) return
       q.data.forEach((p) => {
-        const areaId = classificarProposicao(p.ementa)
+        const areaId = p.areaId ?? 'outros'
         if (!counts[areaId]) counts[areaId] = { total: 0, deps: {} }
         counts[areaId].total += 1
         if (!counts[areaId].deps[dep.id]) counts[areaId].deps[dep.id] = { dep, count: 0 }
@@ -220,7 +221,7 @@ export default function RankingPage() {
                   ? `Carregando proposições… ${loadedCountArea}/${areaDeputados.length} deputados`
                   : areaRanking.length > 0
                   ? `${areaDeputados.length} deputados · ${totalProjetosArea.toLocaleString('pt-BR')} projetos classificados (primeiros 100 por deputado)`
-                  : 'Projetos classificados por palavras-chave da ementa.'}
+                  : 'Projetos classificados por IA com base na ementa.'}
               </p>
             </div>
             <Select value={anoArea} onValueChange={(v) => setAnoArea(v ?? '')}>

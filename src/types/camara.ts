@@ -81,6 +81,7 @@ export interface Proposicao {
   numero: number
   ano: number
   ementa: string
+  areaId?: string
 }
 
 export interface ProposicaoDetalhe {

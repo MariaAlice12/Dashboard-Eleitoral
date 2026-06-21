@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Deputado {
+  id                 Int          @id
+  nome               String
+  nomeCivil          String?
+  siglaPartido       String
+  siglaUf            String
+  urlFoto            String
+  email              String?
+  situacao           String?
+  condicaoEleitoral  String?
+  updatedAt          DateTime     @updatedAt
+  proposicoes        Proposicao[]
+
+  @@index([siglaPartido])
+  @@index([siglaUf])
+}
+
+model Proposicao {
+  id                Int      @id
+  idDeputadoAutor   Int
+  deputado          Deputado @relation(fields: [idDeputadoAutor], references: [id])
+  siglaTipo         String
+  numero            Int
+  ano               Int
+  ementa            String
+  areaId            String
+  dataApresentacao  DateTime?
+  updatedAt         DateTime @updatedAt
+
+  @@index([idDeputadoAutor])
+  @@index([areaId])
+}
+
+model IngestaoLog {
+  id                      Int       @id @default(autoincrement())
+  executadoEm             DateTime  @default(now())
+  status                  String
+  deputadosProcessados    Int       @default(0)
+  proposicoesProcessadas  Int       @default(0)
+  erro                    String?
+}

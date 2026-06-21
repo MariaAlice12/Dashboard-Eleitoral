@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Search } from 'lucide-react'
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { PARTIDO_CORES, UFS } from '@/lib/partido-cores'
-import { AREAS, classificarProposicao, getArea } from '@/lib/classificar-proposicao'
+import { AREAS, getArea } from '@/lib/classificar-proposicao'
 import { ProjetoDetalheModal } from '@/components/ProjetoDetalheModal'
 
 const PARTIDOS = [
@@ -30,6 +30,7 @@ type ProposicaoResumo = {
   siglaTipo: string
   numero: number
   ano: number
+  areaId?: string
 }
 
 async function fetchDeputados(partido: string, uf: string): Promise<ApiResponse<DeputadoResumo[]>> {
@@ -82,7 +83,7 @@ export default function ProjetosPage() {
     propostasQueries.forEach((q, i) => {
       const dep = deputados[i]
       if (!dep || !q.data) return
-      q.data.forEach((p) => items.push({ ...p, areaId: classificarProposicao(p.ementa), dep }))
+      q.data.forEach((p) => items.push({ ...p, areaId: p.areaId ?? 'outros', dep }))
     })
     return items.sort((a, b) => b.ano - a.ano || b.id - a.id)
   }, [isLoadingProj, deputados.length, loadedCount]) // eslint-disable-line react-hooks/exhaustive-deps

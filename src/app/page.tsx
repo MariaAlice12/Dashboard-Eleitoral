@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
-import { useInfiniteQuery, useQueries } from '@tanstack/react-query'
+import { useState, useCallback } from 'react'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Search, Users, Building2, MapPin } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -12,17 +12,14 @@ import { BarChart, Bar, Cell, Tooltip, XAxis, YAxis, CartesianGrid, ResponsiveCo
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { UFS } from '@/lib/partido-cores'
 import { useDebounce } from '@/lib/use-debounce'
-import { classificarProposicao, getArea } from '@/lib/classificar-proposicao'
+import { getArea } from '@/lib/classificar-proposicao'
 
-const AMOSTRA_AREAS = 40
+type AreasResponse = { dados: { areaId: string; count: number }[]; total: number }
 
-type ProposicaoResumo = { id: number; ementa: string }
-
-async function fetchProposicoes(id: number): Promise<ProposicaoResumo[]> {
-  const res = await fetch(`/api/deputados/${id}/proposicoes?itens=100`)
-  if (!res.ok) return []
-  const d: ApiResponse<ProposicaoResumo[]> = await res.json()
-  return d.dados ?? []
+async function fetchAreas(): Promise<AreasResponse> {
+  const res = await fetch('/api/proposicoes/areas')
+  if (!res.ok) return { dados: [], total: 0 }
+  return res.json()
 }
 
 const PARTIDOS = [
@@ -30,12 +27,14 @@ const PARTIDOS = [
   'PODE','AVANTE','SOLIDARIEDADE','PSB','PCdoB','CIDADANIA','PRD',
 ]
 
+type DeputadosResponse = ApiResponse<DeputadoResumo[]> & { total: number }
+
 async function fetchDeputados(
   nome: string,
   partido: string,
   uf: string,
   pagina: number,
-): Promise<ApiResponse<DeputadoResumo[]>> {
+): Promise<DeputadosResponse> {
   const params = new URLSearchParams()
   if (nome) params.set('nome', nome)
   if (partido && partido !== 'todos') params.set('siglaPartido', partido)
@@ -81,38 +80,23 @@ export default function HomePage() {
       (data?.pages ?? []).flatMap((p) => p.dados).map((d) => [d.id, d]),
     ).values(),
   )
+  const totalDeputados = data?.pages.at(-1)?.total ?? deputados.length
   const totalPartidos = new Set(deputados.map((d) => d.siglaPartido)).size
   const totalUfs = new Set(deputados.map((d) => d.siglaUf)).size
 
-  const deputadosAmostra = deputados.slice(0, AMOSTRA_AREAS)
-  const propostasAreaQueries = useQueries({
-    queries: deputadosAmostra.map((dep) => ({
-      queryKey: ['proposicoes-home-area', dep.id],
-      queryFn: () => fetchProposicoes(dep.id),
-      staleTime: 10 * 60 * 1000,
-    })),
+  const { data: areasData, isLoading: isLoadingAreas } = useQuery({
+    queryKey: ['proposicoes-areas'],
+    queryFn: fetchAreas,
+    staleTime: 10 * 60 * 1000,
   })
-  const isLoadingAreas = propostasAreaQueries.some((q) => q.isLoading)
 
-  const areaChartData = useMemo(() => {
-    if (deputadosAmostra.length === 0 || isLoadingAreas) return []
-    const counts: Record<string, number> = {}
-    let total = 0
-    propostasAreaQueries.forEach((q) => {
-      q.data?.forEach((p) => {
-        const areaId = classificarProposicao(p.ementa)
-        counts[areaId] = (counts[areaId] ?? 0) + 1
-        total += 1
-      })
+  const totalProjetos = areasData?.total ?? 0
+  const areaChartData = (areasData?.dados ?? [])
+    .map(({ areaId, count }) => {
+      const area = getArea(areaId)
+      return { name: area.label, value: count, pct: totalProjetos ? (count / totalProjetos) * 100 : 0, color: area.color }
     })
-    if (total === 0) return []
-    return Object.entries(counts)
-      .map(([areaId, count]) => {
-        const area = getArea(areaId)
-        return { name: area.label, value: count, pct: (count / total) * 100, color: area.color }
-      })
-      .sort((a, b) => b.value - a.value)
-  }, [isLoadingAreas, propostasAreaQueries, deputadosAmostra.length])
+    .sort((a, b) => b.value - a.value)
 
   const handleClearFiltros = useCallback(() => {
     setNome('')
@@ -132,17 +116,24 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={<Users className="h-5 w-5" />} label="deputados encontrados" value={deputados.length} />
+        <StatCard icon={<Users className="h-5 w-5" />} label="deputados encontrados" value={totalDeputados} />
         <StatCard icon={<Building2 className="h-5 w-5" />} label="partidos" value={totalPartidos} />
         <StatCard icon={<MapPin className="h-5 w-5" />} label="estados representados" value={totalUfs} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Representatividade dos projetos por área</CardTitle>
+          <div className="flex items-baseline justify-between gap-2">
+            <CardTitle className="text-base">Representatividade dos projetos por área</CardTitle>
+            {totalProjetos > 0 && (
+              <span className="text-sm font-normal text-muted-foreground whitespace-nowrap">
+                {totalProjetos} projetos analisados
+              </span>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
-            Classificação por palavras-chave da ementa, com base em uma amostra de até{' '}
-            {AMOSTRA_AREAS} deputados.
+            Classificação por IA com base na ementa de todos os projetos cadastrados.
+            Atualizado diariamente.
           </p>
         </CardHeader>
         <CardContent>
