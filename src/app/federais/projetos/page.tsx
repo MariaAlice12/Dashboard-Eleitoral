@@ -13,6 +13,7 @@ import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { UFS } from '@/lib/partido-cores'
 import { AREAS, getArea } from '@/lib/classificar-proposicao'
 import { ProjetoDetalheModal } from '@/components/ProjetoDetalheModal'
+import { SectionNav } from '@/components/SectionNav'
 
 const PARTIDOS = [
   'PT','PL','UNIÃO','PP','MDB','REPUBLICANOS','PSD','PDT','PSDB','PSOL',
@@ -103,6 +104,7 @@ export default function ProjetosPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <SectionNav />
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">Projetos Legislativos</h1>
         <p className="text-muted-foreground">Explore os projetos apresentados pelos deputados federais.</p>

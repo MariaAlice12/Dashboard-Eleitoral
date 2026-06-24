@@ -13,6 +13,7 @@ import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { UFS } from '@/lib/partido-cores'
 import { useDebounce } from '@/lib/use-debounce'
 import { getArea } from '@/lib/classificar-proposicao'
+import { SectionNav } from '@/components/SectionNav'
 
 type AreasResponse = { dados: { areaId: string; count: number }[]; total: number }
 
@@ -125,6 +126,7 @@ export default function HomePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <SectionNav />
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Deputados Federais</h1>
         <p className="text-muted-foreground">

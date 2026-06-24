@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:seed-presidentes": "node prisma/seed-presidentes.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -58,3 +58,20 @@ model SyncState {
   deputadosProcessados    Int       @default(0)
   proposicoesProcessadas  Int       @default(0)
 }
+
+// Dado histórico curado manualmente (via seed) — não existe API pública
+// consolidada com todos os presidentes do Brasil, e o dado não muda com
+// frequência o suficiente para justificar um cron de sincronização.
+model Presidente {
+  id             Int       @id @default(autoincrement())
+  nome           String
+  partido        String?
+  vice           String?
+  periodoInicio  DateTime
+  periodoFim     DateTime?
+  condicao       String
+  observacoes    String?
+  ordem          Int
+
+  @@index([ordem])
+}

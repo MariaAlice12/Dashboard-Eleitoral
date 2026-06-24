@@ -7,8 +7,8 @@ import { Navbar } from '@/components/Navbar'
 const geist = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Dashboard Eleitoral | Deputados Federais',
-  description: 'Acompanhe votos, projetos, presença e gastos dos deputados federais brasileiros.',
+  title: 'Dashboard Eleitoral',
+  description: 'Transparência política consolidada: deputados federais, estaduais, senadores, vereadores e linha do tempo presidencial.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

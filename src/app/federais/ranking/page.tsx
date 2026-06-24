@@ -17,6 +17,7 @@ import {
 import type { ApiResponse, DeputadoResumo } from '@/types/camara'
 import { PARTIDO_CORES, UFS } from '@/lib/partido-cores'
 import { getArea } from '@/lib/classificar-proposicao'
+import { SectionNav } from '@/components/SectionNav'
 
 const PARTIDOS = [
   'PT','PL','UNIÃO','PP','MDB','REPUBLICANOS','PSD','PDT','PSDB','PSOL',
@@ -172,6 +173,7 @@ export default function RankingPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <SectionNav />
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">Ranking dos Deputados</h1>
         <p className="text-muted-foreground">Compare presença, produtividade legislativa e gastos com a cota parlamentar.</p>
