@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { listarDeputados } from '@/lib/camara-api'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url)
+    const siglaPartido = searchParams.get('siglaPartido') || undefined
+    const siglaUf = searchParams.get('siglaUf') || undefined
+
     const dbCount = await prisma.deputado.count()
 
     if (dbCount === 0) {
@@ -12,7 +16,7 @@ export async function GET() {
       let total = 0
       let pagina = 1
       while (true) {
-        const res = await listarDeputados({ itens: '100', pagina: String(pagina) })
+        const res = await listarDeputados({ itens: '100', pagina: String(pagina), siglaPartido, siglaUf })
         res.dados.forEach((d) => {
           partidos.add(d.siglaPartido)
           ufs.add(d.siglaUf)
@@ -27,13 +31,18 @@ export async function GET() {
       )
     }
 
-    const [porPartido, porUf] = await Promise.all([
-      prisma.deputado.groupBy({ by: ['siglaPartido'] }),
-      prisma.deputado.groupBy({ by: ['siglaUf'] }),
+    // O filtro de cada big number ignora o próprio campo que ele representa:
+    // ao filtrar por UF, "partidos" deve contar os partidos só daquele UF
+    // (e vice-versa), senão o número não muda quando o usuário aplica o filtro.
+    const where = { siglaPartido, siglaUf }
+    const [totalDeputados, porPartido, porUf] = await Promise.all([
+      prisma.deputado.count({ where }),
+      prisma.deputado.groupBy({ by: ['siglaPartido'], where: { siglaUf } }),
+      prisma.deputado.groupBy({ by: ['siglaUf'], where: { siglaPartido } }),
     ])
 
     return NextResponse.json(
-      { totalDeputados: dbCount, totalPartidos: porPartido.length, totalUfs: porUf.length },
+      { totalDeputados, totalPartidos: porPartido.length, totalUfs: porUf.length },
       { headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' } },
     )
   } catch (err) {

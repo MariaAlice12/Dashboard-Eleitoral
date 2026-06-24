@@ -8,8 +8,10 @@ export const maxDuration = 60
 
 // Cada execução processa só um lote de deputados para caber no limite de
 // duração da função serverless (60s no plano Hobby da Vercel). O progresso
-// fica salvo em SyncState e o cron diário retoma de onde parou.
-const TAMANHO_LOTE = 20
+// fica salvo em SyncState após CADA deputado (não só no fim do lote), porque
+// um timeout mata o processo sem lançar exception — sem isso o cursor nunca
+// avançava e o cron reprocessava sempre os mesmos primeiros deputados.
+const TAMANHO_LOTE = 5
 
 async function listarTodosDeputados(): Promise<DeputadoResumo[]> {
   const todos: DeputadoResumo[] = []
@@ -116,6 +118,18 @@ export async function GET(req: NextRequest) {
     for (const dep of lote) {
       proposicoesProcessadas += await processarDeputado(dep)
       deputadosProcessados += 1
+
+      // Salva o cursor logo após cada deputado. Se a função for matada por
+      // timeout no meio do lote, a próxima execução retoma a partir daqui
+      // em vez de reprocessar os mesmos deputados do início.
+      await prisma.syncState.update({
+        where: { id: 1 },
+        data: {
+          cursorDeputadoId: dep.id,
+          deputadosProcessados,
+          proposicoesProcessadas,
+        },
+      })
     }
 
     const cursorAtual = lote.length > 0 ? lote[lote.length - 1].id : null
@@ -130,15 +144,6 @@ export async function GET(req: NextRequest) {
       })
       await prisma.ingestaoLog.create({
         data: { status: 'sucesso', deputadosProcessados, proposicoesProcessadas },
-      })
-    } else {
-      await prisma.syncState.update({
-        where: { id: 1 },
-        data: {
-          cursorDeputadoId: cursorAtual,
-          deputadosProcessados,
-          proposicoesProcessadas,
-        },
       })
     }
 
