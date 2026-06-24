@@ -72,6 +72,9 @@ model Presidente {
   condicao       String
   observacoes    String?
   ordem          Int
+  biografia      String?
+  principaisFeitos String[] @default([])
+  linkWikipedia  String?
 
   @@index([ordem])
 }
