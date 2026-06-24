@@ -13,7 +13,7 @@ export function DeputadoCard({ deputado }: Props) {
   const cor = PARTIDO_CORES[deputado.siglaPartido] ?? '#6b7280'
 
   return (
-    <Link href={`/deputado/${deputado.id}`}>
+    <Link href={`/federais/${deputado.id}`}>
       <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
         <CardContent className="p-4 flex items-center gap-3">
           <div className="relative h-14 w-14 flex-shrink-0 rounded-full overflow-hidden bg-muted">

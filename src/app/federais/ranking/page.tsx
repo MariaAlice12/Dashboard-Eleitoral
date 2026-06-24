@@ -69,7 +69,7 @@ async function fetchProposicoes(id: number, ano?: string): Promise<ProposicaoRes
 function PodiumCard({ dep, pos, value, sub }: { dep: DeputadoResumo; pos: number; value: string; sub: string }) {
   const medalColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
   return (
-    <Link href={`/deputado/${dep.id}`}>
+    <Link href={`/federais/${dep.id}`}>
       <Card className="hover:shadow-md transition-shadow text-center p-4">
         <span className={`text-2xl font-black ${medalColors[pos]}`}>{pos + 1}º</span>
         <div className="relative h-14 w-14 rounded-full overflow-hidden bg-muted mx-auto mt-2">
@@ -325,7 +325,7 @@ export default function RankingPage() {
                       </div>
                       <div className="flex flex-wrap gap-3">
                         {topDeps.map(({ dep, count }, i) => (
-                          <Link key={dep.id} href={`/deputado/${dep.id}`}
+                          <Link key={dep.id} href={`/federais/${dep.id}`}
                             className="flex items-center gap-2 bg-muted/50 hover:bg-muted rounded-lg px-3 py-2 transition-colors">
                             <span className="text-xs text-muted-foreground font-bold w-4">{i + 1}º</span>
                             <div className="relative h-7 w-7 rounded-full overflow-hidden bg-muted shrink-0">
@@ -388,7 +388,7 @@ export default function RankingPage() {
                           </TableCell>
                           <TableCell className="text-sm">{dep.siglaUf}</TableCell>
                           <TableCell className="text-right">
-                            <Link href={`/deputado/${dep.id}`} className="text-xs text-primary hover:underline">
+                            <Link href={`/federais/${dep.id}`} className="text-xs text-primary hover:underline">
                               Ver perfil →
                             </Link>
                           </TableCell>

@@ -10,13 +10,13 @@ export function Navbar() {
           <span>Dashboard Eleitoral</span>
         </Link>
         <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground transition-colors">
-            Deputados
+          <Link href="/federais" className="hover:text-foreground transition-colors">
+            Deputados Federais
           </Link>
-          <Link href="/ranking" className="hover:text-foreground transition-colors">
+          <Link href="/federais/ranking" className="hover:text-foreground transition-colors">
             Ranking
           </Link>
-          <Link href="/projetos" className="flex items-center gap-1 hover:text-foreground transition-colors">
+          <Link href="/federais/projetos" className="flex items-center gap-1 hover:text-foreground transition-colors">
             <FileText className="h-4 w-4" />
             Projetos
           </Link>

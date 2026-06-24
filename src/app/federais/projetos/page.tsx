@@ -216,7 +216,7 @@ export default function ProjetosPage() {
                   <p className="text-sm leading-snug line-clamp-2 hover:underline">{p.ementa}</p>
                 </button>
                 <Link
-                  href={`/deputado/${p.dep.id}`}
+                  href={`/federais/${p.dep.id}`}
                   className="flex items-center gap-2 shrink-0 hover:opacity-80 transition-opacity"
                 >
                   <div className="relative h-9 w-9 rounded-full overflow-hidden bg-muted">

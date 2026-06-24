@@ -14,7 +14,7 @@ const TABS = [
 
 export function DeputadoTabs({ id }: { id: string }) {
   const pathname = usePathname()
-  const base = `/deputado/${id}`
+  const base = `/federais/${id}`
 
   return (
     <nav className="flex gap-1 border-b overflow-x-auto">
