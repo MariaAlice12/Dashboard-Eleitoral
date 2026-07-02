@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import type { DeputadoResumo, Proposicao } from '@/types/camara'
 
 export const maxDuration = 60
+export const dynamic = 'force-dynamic'
 
 // Cada execução processa só um lote de deputados para caber no limite de
 // duração da função serverless (60s no plano Hobby da Vercel). O progresso

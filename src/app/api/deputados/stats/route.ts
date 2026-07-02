@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { listarDeputados } from '@/lib/camara-api'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
