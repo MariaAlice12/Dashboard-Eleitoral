@@ -19,6 +19,15 @@ import { PARTIDO_CORES, UFS } from '@/lib/partido-cores'
 import { getArea } from '@/lib/classificar-proposicao'
 import { SectionNav } from '@/components/SectionNav'
 
+type DeputadoProd = {
+  id: number
+  nome: string
+  siglaPartido: string
+  siglaUf: string
+  urlFoto: string
+  totalProposicoes: number
+}
+
 const PARTIDOS = [
   'PT','PL','UNIÃO','PP','MDB','REPUBLICANOS','PSD','PDT','PSDB','PSOL',
   'PODE','AVANTE','SOLIDARIEDADE','PSB','PCdoB','CIDADANIA','PRD',
@@ -67,7 +76,9 @@ async function fetchProposicoes(id: number, ano?: string): Promise<ProposicaoRes
   return d.dados ?? []
 }
 
-function PodiumCard({ dep, pos, value, sub }: { dep: DeputadoResumo; pos: number; value: string; sub: string }) {
+type PodiumDep = { id: number; nome: string; siglaPartido: string; urlFoto: string }
+
+function PodiumCard({ dep, pos, value, sub }: { dep: PodiumDep; pos: number; value: string; sub: string }) {
   const medalColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
   return (
     <Link href={`/federais/${dep.id}`}>
@@ -95,13 +106,33 @@ export default function RankingPage() {
   // filtros da aba "Por Área"
   const [anoArea, setAnoArea] = useState('')
 
+  // filtros da aba "Produtividade"
+  const [anoProd, setAnoProd] = useState('')
+
   const { data, isLoading } = useQuery({
     queryKey: ['ranking-deps', partido, uf],
     queryFn: () => fetchDeputados(partido, uf),
   })
 
   const deputados = (data?.dados ?? []).slice(0, 50)
-  const podiumProjetos = deputados.slice(0, 3)
+
+  // ── Aba "Produtividade" ─────────────────────────────────────────────────────
+  const { data: prodData, isLoading: isLoadingProd } = useQuery({
+    queryKey: ['ranking-prod', partido, uf, anoProd],
+    queryFn: async () => {
+      const params = new URLSearchParams({ itens: '50' })
+      if (partido && partido !== 'todos') params.set('siglaPartido', partido)
+      if (uf && uf !== 'todos') params.set('siglaUf', uf)
+      if (anoProd && anoProd !== 'todos') params.set('ano', anoProd)
+      const res = await fetch(`/api/deputados/ranking-produtividade?${params}`)
+      if (!res.ok) return { dados: [] as DeputadoProd[] }
+      return res.json() as Promise<{ dados: DeputadoProd[] }>
+    },
+    enabled: tab === 'produtividade',
+    staleTime: 10 * 60 * 1000,
+  })
+  const rankingProd = prodData?.dados ?? []
+  const podiumProd = rankingProd.slice(0, 3)
 
   // ── Aba "Presença" ──────────────────────────────────────────────────────────
   const presencaDeputados = tab === 'presenca' ? deputados : []
@@ -239,22 +270,92 @@ export default function RankingPage() {
 
         {/* ── Produtividade ── */}
         <TabsContent value="produtividade" className="space-y-6 mt-6">
-          <div>
-            <h2 className="text-lg font-semibold mb-4">Mais projetos apresentados</h2>
-            {isLoading ? (
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="space-y-1 flex-1 min-w-0">
+              <h2 className="text-lg font-semibold">Mais projetos apresentados</h2>
+              <p className="text-sm text-muted-foreground">
+                {isLoadingProd
+                  ? 'Calculando…'
+                  : rankingProd.length > 0
+                  ? `${rankingProd.length} deputados com projetos no banco de dados`
+                  : 'Projetos cadastrados no banco de dados local, sincronizados diariamente.'}
+              </p>
+            </div>
+            <Select value={anoProd} onValueChange={(v) => setAnoProd(v ?? '')}>
+              <SelectTrigger className="w-36 shrink-0">
+                <SelectValue placeholder="Todos os anos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os anos</SelectItem>
+                {ANOS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isLoadingProd ? (
+            <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)}
               </div>
-            ) : (
+              <Skeleton className="h-64 rounded-xl" />
+            </div>
+          ) : rankingProd.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-8 text-center">
+              Nenhum dado disponível. O banco pode ainda estar sendo sincronizado.
+            </p>
+          ) : (
+            <>
               <div className="grid grid-cols-3 gap-4">
-                {podiumProjetos.map((dep, i) => (
-                  <PodiumCard key={dep.id} dep={dep} pos={i} value="—" sub="projetos" />
+                {podiumProd.map((dep, i) => (
+                  <PodiumCard key={dep.id} dep={dep} pos={i} value={String(dep.totalProposicoes)} sub="projetos" />
                 ))}
               </div>
-            )}
-          </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Ranking completo</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10">#</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Partido</TableHead>
+                        <TableHead>UF</TableHead>
+                        <TableHead className="text-right">Projetos</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rankingProd.map((dep, i) => (
+                        <TableRow key={dep.id} className="hover:bg-muted/40">
+                          <TableCell className="text-muted-foreground text-sm">{i + 1}</TableCell>
+                          <TableCell>
+                            <Link href={`/federais/${dep.id}`} className="flex items-center gap-2 hover:underline">
+                              <div className="relative h-8 w-8 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                                <Image src={dep.urlFoto} alt={dep.nome} fill className="object-cover" sizes="32px" unoptimized />
+                              </div>
+                              <span className="text-sm font-medium">{dep.nome}</span>
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <Badge style={{ backgroundColor: PARTIDO_CORES[dep.siglaPartido] ?? '#6b7280', color: '#fff' }} className="text-xs">
+                              {dep.siglaPartido}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">{dep.siglaUf}</TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums">{dep.totalProposicoes}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
           <p className="text-xs text-muted-foreground">
-            Nota: os dados de projetos requerem chamadas individuais. Acesse o perfil de cada deputado para o número exato.
+            Contagem com base nas proposições cadastradas no banco de dados local, sincronizadas diariamente via API da Câmara.
           </p>
         </TabsContent>
 

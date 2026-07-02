@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { ScrollText } from 'lucide-react'
+import { ScrollText, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/format'
@@ -16,6 +16,9 @@ type Presidente = {
   periodoFim: string | null
   condicao: string
   observacoes: string | null
+  biografia: string | null
+  principaisFeitos: string[]
+  linkWikipedia: string | null
 }
 
 const CONDICAO_LABEL: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
@@ -62,7 +65,7 @@ export default function PresidencialPage() {
       {isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
+            <Skeleton key={i} className="h-40 rounded-xl" />
           ))}
         </div>
       ) : (
@@ -72,26 +75,69 @@ export default function PresidencialPage() {
             return (
               <li key={p.id} className="relative">
                 <span className="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full bg-primary" />
-                <div className="rounded-xl border bg-card p-4 space-y-1.5">
+                <div className="rounded-xl border bg-card p-4 space-y-3">
+
+                  {/* Nome + período */}
                   <div className="flex items-baseline justify-between gap-2 flex-wrap">
                     <h2 className="font-semibold">{p.nome}</h2>
                     <span className="text-sm text-muted-foreground whitespace-nowrap">
                       {formatPeriodo(p.periodoInicio, p.periodoFim)}
                     </span>
                   </div>
+
+                  {/* Badges de condição e partido */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant={condicao.variant}>{condicao.label}</Badge>
                     {p.partido && <Badge variant="secondary">{p.partido}</Badge>}
+                    {p.vice && (
+                      <span className="text-sm text-muted-foreground">Vice: {p.vice}</span>
+                    )}
                   </div>
-                  {p.vice && (
-                    <p className="text-sm text-muted-foreground">Vice: {p.vice}</p>
+
+                  {/* Biografia */}
+                  {p.biografia && (
+                    <p className="text-sm text-muted-foreground leading-relaxed">{p.biografia}</p>
                   )}
+
+                  {/* Principais feitos */}
+                  {p.principaisFeitos.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Principais feitos
+                      </p>
+                      <ul className="space-y-1">
+                        {p.principaisFeitos.map((feito, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                            {feito}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Observações (nota de contexto) */}
                   {p.observacoes && (
-                    <p className="text-sm text-muted-foreground">{p.observacoes}</p>
+                    <p className="text-xs text-muted-foreground italic border-t pt-2">{p.observacoes}</p>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(p.periodoInicio)} até {p.periodoFim ? formatDate(p.periodoFim) : 'o momento'}
-                  </p>
+
+                  {/* Datas completas + link Wikipedia */}
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(p.periodoInicio)} até {p.periodoFim ? formatDate(p.periodoFim) : 'o momento'}
+                    </p>
+                    {p.linkWikipedia && (
+                      <a
+                        href={p.linkWikipedia}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        Wikipedia <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+
                 </div>
               </li>
             )
